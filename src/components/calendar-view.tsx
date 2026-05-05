@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/auth-provider';
 import { Calendar } from '@/components/ui/calendar';
@@ -25,13 +25,7 @@ export function CalendarView() {
   const [dayDiaries, setDayDiaries] = useState<Diary[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      fetchDiaries();
-    }
-  }, [user]);
-
-  const fetchDiaries = async () => {
+  const fetchDiaries = useCallback(async () => {
     const { data, error } = await supabase
       .from('diaries')
       .select('*')
@@ -42,7 +36,13 @@ export function CalendarView() {
     } else {
       setDiaries(data || []);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      fetchDiaries();
+    }
+  }, [user, fetchDiaries]);
 
   const getEmoji = (emotion: string) => {
     switch (emotion) {
@@ -138,7 +138,7 @@ export function CalendarView() {
                 </div>
                 <CardContent className="p-5 space-y-4">
                   <p className="text-slate-600 dark:text-slate-300 leading-relaxed font-medium italic">
-                    "{diary.content}"
+                    &quot;{diary.content}&quot;
                   </p>
                   <div className="pt-4 border-t border-slate-50 dark:border-slate-800">
                     <div className="text-[10px] font-bold text-indigo-400 dark:text-indigo-300 uppercase tracking-widest mb-2">AI Comment</div>

@@ -1,7 +1,6 @@
 'use client';
 
 import { useAuth } from '@/providers/auth-provider';
-import { Button } from '@/components/ui/button';
 import { LogOut, Calendar as CalendarIcon, PenLine, Sparkles, User as UserIcon, BarChart3 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DiaryForm } from '@/components/diary-form';

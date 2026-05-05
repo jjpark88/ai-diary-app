@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/auth-provider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  Sparkles, BrainCircuit, Info, Sun, CloudRain, ThermometerSun, 
-  AlertCircle, Cloud, Map, Wind, Activity, Zap, TrendingUp, HelpCircle
+  BrainCircuit, Sun, CloudRain, ThermometerSun, 
+  Cloud, Map, Wind, Activity, HelpCircle
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useTheme } from 'next-themes';
@@ -33,7 +33,6 @@ type KeywordNode = {
 export function StatsView() {
   const { user } = useAuth();
   const { theme } = useTheme();
-  const [diaries, setDiaries] = useState<Diary[]>([]);
   const [nodes, setNodes] = useState<KeywordNode[]>([]);
   const [weatherStats, setWeatherStats] = useState({
     avgTemp: 0,
@@ -44,32 +43,11 @@ export function StatsView() {
   const [volatility, setVolatility] = useState({
     index: 0,
     status: '',
-    data: [] as any[]
+    data: [] as { name: string; score: number }[]
   });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (user) {
-      fetchData();
-    }
-  }, [user]);
-
-  const fetchData = async () => {
-    const { data, error } = await supabase
-      .from('diaries')
-      .select('content, emotion, emotion_score, created_at')
-      .order('created_at', { ascending: true });
-
-    if (!error && data) {
-      setDiaries(data);
-      processKeywords(data);
-      calculateWeather(data);
-      calculateVolatility(data);
-    }
-    setLoading(false);
-  };
-
-  const processKeywords = (data: any[]) => {
+  const processKeywords = (data: Diary[]) => {
     const stopWords = ['오늘', '진짜', '너무', '정말', '하고', '했다', '것이다', '있는', '했다', '매우', '생각', '사람', '일기', '했다'];
     const keywordMap: Record<string, { count: number; totalScore: number }> = {};
 
@@ -110,7 +88,7 @@ export function StatsView() {
     setNodes(newNodes);
   };
 
-  const calculateWeather = (data: any[]) => {
+  const calculateWeather = (data: Diary[]) => {
     if (data.length === 0) return;
     const avgScore = data.reduce((acc, curr) => acc + curr.emotion_score, 0) / data.length;
     const negativeEmotions = ['슬픔', '불안', '분노'];
@@ -125,14 +103,14 @@ export function StatsView() {
     setWeatherStats({ avgTemp: Math.round(avgScore * 0.4 + 10), rainProb: Math.round(rainProb), status, advisory });
   };
 
-  const calculateVolatility = (data: any[]) => {
+  const calculateVolatility = (data: Diary[]) => {
     if (data.length < 2) return;
     let totalDiff = 0;
     const pulseData = data.map((d, i) => {
-      if (i === 0) return { name: 'S', diff: 0, score: d.emotion_score };
+      if (i === 0) return { name: 'S', score: d.emotion_score };
       const diff = Math.abs(d.emotion_score - data[i-1].emotion_score);
       totalDiff += diff;
-      return { name: `E${i+1}`, diff, score: d.emotion_score };
+      return { name: `E${i+1}`, score: d.emotion_score };
     });
     const avgDiff = totalDiff / (data.length - 1);
     let status = '평온한 호수';
@@ -142,27 +120,46 @@ export function StatsView() {
     setVolatility({ index: Math.round(avgDiff), status, data: pulseData });
   };
 
+  const fetchData = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('diaries')
+      .select('content, emotion, emotion_score, created_at')
+      .order('created_at', { ascending: true });
+
+    if (!error && data) {
+      const fetchedDiaries = data as Diary[];
+      processKeywords(fetchedDiaries);
+      calculateWeather(fetchedDiaries);
+      calculateVolatility(fetchedDiaries);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      fetchData();
+    }
+  }, [user, fetchData]);
+
   if (loading) return <div className="text-center py-20 text-slate-400 text-sm italic animate-pulse">마음의 데이터를 분석 중입니다...</div>;
 
   return (
     <div className="max-w-3xl mx-auto pb-20">
       <Tabs defaultValue="network" className="w-full flex flex-col items-center">
-        {/* 더 작고 콤팩트해진 서브 메뉴 */}
         <div className="flex justify-center mb-10">
           <TabsList className="h-7 bg-slate-200/50 dark:bg-slate-800/50 p-0.5 rounded-full border border-slate-100 dark:border-slate-800 gap-0">
-            <TabsTrigger value="network" className="rounded-full px-4 py-1 text-[10px] font-bold data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm transition-all">
+            <TabsTrigger value="network" className="rounded-full px-4 py-1 text-[10px] font-bold data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 transition-all">
               감정 지도
             </TabsTrigger>
-            <TabsTrigger value="weather" className="rounded-full px-4 py-1 text-[10px] font-bold data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm transition-all">
+            <TabsTrigger value="weather" className="rounded-full px-4 py-1 text-[10px] font-bold data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 transition-all">
               마음 날씨
             </TabsTrigger>
-            <TabsTrigger value="volatility" className="rounded-full px-4 py-1 text-[10px] font-bold data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm transition-all">
+            <TabsTrigger value="volatility" className="rounded-full px-4 py-1 text-[10px] font-bold data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 transition-all">
               감정 기복
             </TabsTrigger>
           </TabsList>
         </div>
 
-        {/* 1. 감정 지도 탭 */}
         <TabsContent value="network" className="w-full mt-0 focus-visible:outline-none animate-in fade-in duration-500">
           <div className="space-y-6">
             <Card className="border-none shadow-2xl bg-white dark:bg-slate-900 rounded-[40px] overflow-hidden ring-1 ring-slate-100 dark:ring-slate-800">
@@ -180,7 +177,7 @@ export function StatsView() {
                 <div className="relative w-full max-w-[400px] h-[360px]">
                   <svg width="100%" height="100%" viewBox="0 0 400 360" className="overflow-visible">
                     {nodes.map((node, i) => (
-                      <line key={`line-${i}`} x1="200" y1="180" x2={node.x} y2={node.y} stroke={node.color} strokeWidth={Math.min(5, 1 + node.count)} strokeOpacity="0.3" className="animate-in fade-in duration-1000" />
+                      <line key={`line-${i}`} x1="200" y1="180" x2={node.x} y2={node.y} stroke={node.color} strokeWidth={Math.min(5, 1 + node.count)} strokeOpacity="0.3" />
                     ))}
                     <circle cx="200" cy="180" r="35" fill={theme === 'dark' ? '#0f172a' : '#fff'} stroke="#6366f1" strokeWidth="3" />
                     <text x="200" y="185" textAnchor="middle" fontSize="14" fontWeight="bold" fill={theme === 'dark' ? '#fff' : '#1e293b'}>나</text>
@@ -195,7 +192,6 @@ export function StatsView() {
                 </div>
               </CardContent>
 
-              {/* 상세 가이드 섹션 (복구 및 강화) */}
               <div className="bg-slate-50/50 dark:bg-slate-800/30 p-8 border-t border-slate-50 dark:border-slate-800">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="flex gap-3 items-start">
@@ -203,7 +199,7 @@ export function StatsView() {
                     <div className="space-y-1">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">How to analyze</p>
                       <p className="text-xs text-slate-500 leading-relaxed">
-                        중앙의 '나'와 연결된 선들은 당신의 감정 트리거입니다. <span className="text-green-500 font-bold">초록색 선</span>은 기분을 좋게 만드는 행복 트리거, <span className="text-red-500 font-bold">빨간색 선</span>은 스트레스 트리거를 의미합니다.
+                        중앙의 &quot;나&quot;와 연결된 선들은 당신의 감정 트리거입니다. <span className="text-green-500 font-bold">초록색 선</span>은 기분을 좋게 만드는 행복 트리거, <span className="text-red-500 font-bold">빨간색 선</span>은 스트레스 트리거를 의미합니다.
                       </p>
                     </div>
                   </div>
@@ -222,7 +218,6 @@ export function StatsView() {
           </div>
         </TabsContent>
 
-        {/* 2. 마음 날씨 탭 */}
         <TabsContent value="weather" className="w-full mt-0 focus-visible:outline-none animate-in fade-in duration-500">
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -246,13 +241,12 @@ export function StatsView() {
             <Card className="border-none shadow-xl bg-slate-900 dark:bg-black text-white rounded-[32px] p-8 relative overflow-hidden">
               <div className="relative z-10 space-y-4">
                 <div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-red-500 animate-pulse" /><span className="text-xs font-bold uppercase tracking-widest text-slate-400">마음 기상 특보</span></div>
-                <p className="text-xl font-medium leading-relaxed italic">"{weatherStats.advisory}"</p>
+                <p className="text-xl font-medium leading-relaxed italic">&quot;{weatherStats.advisory}&quot;</p>
               </div>
             </Card>
           </div>
         </TabsContent>
 
-        {/* 3. 감정 기복 탭 */}
         <TabsContent value="volatility" className="w-full mt-0 focus-visible:outline-none animate-in fade-in duration-500">
           <div className="space-y-6">
             <Card className="border-none shadow-2xl bg-white dark:bg-slate-900 rounded-[40px] overflow-hidden ring-1 ring-slate-100 dark:ring-slate-800">

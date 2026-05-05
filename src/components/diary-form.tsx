@@ -53,7 +53,7 @@ export function DiaryForm({ user }: { user: User | null }) {
 
       setResult(data);
       setContent('');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error:', error);
       alert('분석 중 오류가 발생했습니다.');
     } finally {
@@ -134,7 +134,7 @@ export function DiaryForm({ user }: { user: User | null }) {
               </div>
               
               <div className="space-y-1">
-                <div className="text-white/60 text-xs font-bold uppercase tracking-widest">Today's Vibe</div>
+                <div className="text-white/60 text-xs font-bold uppercase tracking-widest">Today&apos;s Vibe</div>
                 <h3 className="text-3xl font-bold">{result.emotion}</h3>
                 <div className="text-indigo-300 text-sm font-medium">강도 {result.emotion_score}%</div>
               </div>
