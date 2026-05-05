@@ -84,17 +84,6 @@ export function CalendarView() {
               day_today: "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-bold rounded-full",
               day_selected: "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-white rounded-full",
             }}
-            modifiers={{
-              hasDiary: diaries.map(d => new Date(d.created_at))
-            }}
-            modifiersStyles={{
-              hasDiary: { fontWeight: 'bold' }
-            }}
-            // DayContent 대신 Day를 사용하거나 아이콘 뱃지 방식으로 우회하여 타입 에러 방지
-            components={{
-              IconLeft: () => <span className="text-xs">&lt;</span>,
-              IconRight: () => <span className="text-xs">&gt;</span>,
-            }}
           />
         </CardContent>
       </Card>
