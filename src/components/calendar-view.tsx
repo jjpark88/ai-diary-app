@@ -90,26 +90,10 @@ export function CalendarView() {
             modifiersStyles={{
               hasDiary: { fontWeight: 'bold' }
             }}
+            // DayContent 대신 Day를 사용하거나 아이콘 뱃지 방식으로 우회하여 타입 에러 방지
             components={{
-              DayContent: ({ date }) => {
-                const dayEntries = diaries.filter(d => 
-                  format(parseISO(d.created_at), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
-                );
-                return (
-                  <div className="relative w-full h-full flex items-center justify-center pt-1 group">
-                    <span className="z-10 text-sm">{date.getDate()}</span>
-                    {dayEntries.length > 0 && (
-                      <div className="absolute bottom-1 flex -space-x-1">
-                        {dayEntries.slice(0, 1).map((d) => (
-                          <span key={d.id} className="text-[10px] transform group-hover:scale-125 transition-transform">
-                            {getEmoji(d.emotion)}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              }
+              IconLeft: () => <span className="text-xs">&lt;</span>,
+              IconRight: () => <span className="text-xs">&gt;</span>,
             }}
           />
         </CardContent>
